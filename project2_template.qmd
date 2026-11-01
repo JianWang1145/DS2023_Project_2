@@ -1,0 +1,191 @@
+---
+title: " Demographic-Based Inequalities in Opportunity Across the United States"
+author:
+    - "Jian Wang"
+    - "Alexander Kwas"
+    - "Willoughby Anderson"
+format:
+    dashboard:
+        theme: minty
+execute:
+    echo: false
+    warning: false
+    ipynb-shell-interactivity: last_expr
+---
+
+# Overview
+
+## Row {height="30%"}
+
+### Project Introduction
+
+**Dataset:** All Candidate Neighborhoods for Connection-Based Revitalization
+
+**Link:** https://opportunityinsights.org/data/
+
+**High-Level Questions:** 
+
+1. Where are the largest opportunity gaps, and how are they distributed geographically?
+
+2. How do opportunity outcomes relate to neighborhood demographics and conditions?
+
+3. How have population percentages and monetary statistics changed from 2010 to 2020 and where are those changes most significant? 
+
+4. What are the common metrics between neighborhoods that were selected for project funding and obtained a positive upward mobility score? 
+
+
+## Row {height="70%"}
+
+### Geographic Distribution of Opportunity Gaps
+```{python}
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+# Load Dataset(For this demo only)
+df = pd.read_csv("HOPEVI_All_Candidate_Neighborhoods.csv", thousands=",")
+map_df = df.dropna(subset=["lat", "lon", "opportunity_gap","total_pop_2020", "neighborhood"]).sample(n=2000, random_state=114514)  # Sample for demo purposes
+# This is not the actual data cleaning. DO NOT USE THIS FOR THE ACTUAL PROJECT!!!
+
+fig = px.scatter_geo(
+    map_df,
+    lat=map_df["lat"],
+    lon=map_df["lon"],
+    color=map_df["opportunity_gap"],
+    size=map_df["total_pop_2020"],
+    scope="usa",
+    hover_name=map_df["neighborhood"],
+    color_continuous_scale="RdBu",
+    title="Geographic Distribution of Neighborhood Opportunity Gaps (Demo)"
+)
+
+fig.update_traces(
+    marker=dict(
+        line=dict(width=0),
+        opacity=0.7
+    )
+)
+fig.show()
+```
+
+# Opportunity Gap v. Demographics
+
+## Row
+
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+fig1 = px.scatter(
+    title="Poverty Rate vs. Opportunity Gap (Placeholder)"
+)
+
+fig1.update_layout(
+    xaxis_title="Poverty Rate",
+    yaxis_title="Opportunity Gap",
+)
+
+fig1.add_annotation(
+    text="Scatter Plot Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",
+    yref="paper",
+    showarrow=False
+)
+
+fig1.show()
+```
+
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+fig1 = px.scatter(
+    title="Adult/Student Ratio vs. Opportunity Gap (Placeholder)"
+)
+
+fig1.update_layout(
+    xaxis_title="Adult/Student Ratio",
+    yaxis_title="Opportunity Gap",
+)
+
+fig1.add_annotation(
+    text="Scatter Plot Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",
+    yref="paper",
+    showarrow=False
+)
+
+
+
+fig1.show()
+```
+
+# Page 3
+
+## Row
+
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+fig1 = px.scatter(
+    title="Placeholder"
+)
+
+fig1.update_layout(
+    xaxis_title="Hello",
+    yaxis_title="I am a placeholder",
+)
+
+fig1.add_annotation(
+    text=":) Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",
+    yref="paper",
+    showarrow=False
+)
+
+fig1.show()
+```
+
+## Row
+
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+fig1 = px.scatter(
+    title="Placeholder"
+)
+
+fig1.update_layout(
+    xaxis_title="Hello",
+    yaxis_title="I am a placeholder",
+)
+
+fig1.add_annotation(
+    text=":) Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",
+    yref="paper",
+    showarrow=False
+)
+
+fig1.show()
+```
