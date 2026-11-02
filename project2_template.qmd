@@ -1,6 +1,6 @@
 ---
 title: " Demographic-Based Inequalities in Opportunity Across the United States"
-author:
+authors:
     - "Jian Wang"
     - "Alexander Kwas"
     - "Willoughby Anderson"
@@ -72,73 +72,168 @@ fig.update_traces(
 fig.show()
 ```
 
-# Opportunity Gap v. Demographics
+# Opportunity Gaps
+
+### Goals
+**One:** Do large-gap tracts cluster in certain metros or neighborhoods?
+
+## Row
+
+### Plot
+```{python}
+import pandas as pd, numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+
+CSV = "HOPEVI_All_Candidate_Neighborhoods.csv"
+df = pd.read_csv(CSV, thousands=",", dtype={"tract_code_2010": str, "tract_code_2020": str})
+
+#
+def clean(s):
+    return pd.to_numeric(s.astype(str).str.replace(r"[$,%]", "", regex=True), errors="coerce")
+
+for c in df.columns:
+    if c.startswith(("share_", "poverty_rate_", "median_household_income_", "median_rent_")):
+        df[c] = clean(df[c])
+for c in ["upward_mobility", "adult_income_nearest_10_tracts", "opportunity_gap",
+          "pop_density_2020", "land_area"]:
+    df[c] = pd.to_numeric(df[c], errors="coerce")
+
+df["upward_mobility"] *= 100  
+
+# Metro-relative gapg
+df = df.dropna(subset=["lat", "lon", "msa_name", "upward_mobility"])
+df = df[df["flag_in_top_100_msas"] == 1].copy()
+g = df.groupby("msa_name")["upward_mobility"]
+df["metro_median"] = g.transform("median")
+df["metro_gap"] = df["upward_mobility"] - df["metro_median"]    
+df["large_gap"] = g.rank(pct=True) <= 0.10                      
+df["label"] = df["neighborhood"].fillna(df["city"])
+
+# Demo subset: every tract in a few metros (big -> small)
+demo_msas = df["msa_name"].value_counts().index[[0, 5, 20, 50]]
+map_df = df[df["msa_name"].isin(demo_msas)].copy()
+```
+
+```{python}
+fig1 = go.Figure()
+msas = list(demo_msas)
+
+for i, m in enumerate(msas):
+    d = map_df[map_df["msa_name"] == m]
+    fig1.add_trace(go.Scattermap(
+        lat=d["lat"], lon=d["lon"], mode="markers", name=m, visible=(i == 0),
+        marker=dict(
+            size=np.where(d["large_gap"], 11, 7),
+            color=d["metro_gap"], colorscale="RdBu", cmid=0, cmin=-25, cmax=25,
+            colorbar=dict(title="Gap vs. metro<br>median (pctl pts)"),
+            opacity=0.85,
+        ),
+        customdata=np.stack([d["label"].fillna(""), d["city"].fillna(""),
+                             d["upward_mobility"], d["metro_median"],
+                             d["poverty_rate_2020"]], axis=-1),
+        hovertemplate=("<b>%{customdata[0]}</b> (%{customdata[1]})<br>"
+                       "Upward mobility: %{customdata[2]:.1f}<br>"
+                       "Metro median: %{customdata[3]:.1f}<br>"
+                       "Poverty rate: %{customdata[4]:.0f}%<extra></extra>"),
+    ))
+
+# Dropdown: one button per metro, with the map re-centered on it
+buttons = []
+for i, m in enumerate(msas):
+    d = map_df[map_df["msa_name"] == m]
+    buttons.append(dict(
+        label=m.split(",")[0].split("-")[0], method="update",
+        args=[{"visible": [j == i for j in range(len(msas))]},
+              {"map.center": {"lat": d["lat"].mean(), "lon": d["lon"].mean()},
+               "map.zoom": 8.5 if len(d) > 2000 else 9.5}]))
+
+fig1.update_layout(
+    map=dict(style="carto-positron",
+             center=dict(lat=map_df[map_df.msa_name == msas[0]]["lat"].mean(),
+                         lon=map_df[map_df.msa_name == msas[0]]["lon"].mean()),
+             zoom=8.5),
+    updatemenus=[dict(buttons=buttons, direction="down", x=0.01, y=0.99,
+                      xanchor="left", yanchor="top")],
+    title="Gaps in upward mobility (red = largest gaps)",
+    margin=dict(l=0, r=0, t=50, b=0), height=600, showlegend=False,
+)
+fig1.show()
+
+```
+
+
+```{python}
+TOP_N = 15
+
+fig3 = go.Figure()
+
+for i, m in enumerate(msas):
+    d = (map_df[map_df["msa_name"] == m]
+         .nsmallest(TOP_N, "metro_gap")                 # most negative = largest gap
+         .sort_values("metro_gap", ascending=False))    # so the largest gap plots on top
+    # Unique, readable y labels: neighborhood (city) + tract id suffix
+    ylab = (d["label"].fillna("Unnamed") + " (" + d["city"].fillna("") + ") · "
+            + d["tract_code_2010"].str[-6:])
+    fig3.add_trace(go.Bar(
+        x=d["metro_gap"], y=ylab, orientation="h", visible=(i == 0), name=m,
+        marker=dict(color=d["metro_gap"], colorscale="RdBu", cmid=0, cmin=-25, cmax=25),
+        customdata=np.stack([d["upward_mobility"], d["metro_median"],
+                             d["poverty_rate_2020"], d["median_household_income_2020"]], axis=-1),
+        hovertemplate=("<b>%{y}</b><br>Gap vs. metro median: %{x:.1f} pctl pts<br>"
+                       "Upward mobility: %{customdata[0]:.1f}<br>"
+                       "Metro median: %{customdata[1]:.1f}<br>"
+                       "Poverty rate: %{customdata[2]:.0f}%<br>"
+                       "Median HH income: $%{customdata[3]:,.0f}<extra></extra>"),
+    ))
+
+buttons = [dict(label=m.split(",")[0].split("-")[0], method="update",
+                args=[{"visible": [j == i for j in range(len(msas))]}])
+           for i, m in enumerate(msas)]
+
+fig3.update_layout(
+    title=f"The {TOP_N} tracts furthest below their metro's median upward mobility",
+    updatemenus=[dict(buttons=buttons, direction="down", x=0.01, y=1.12,
+                      xanchor="left", yanchor="top")],
+    xaxis=dict(title="Gap vs. metro median (percentile points)", zeroline=True,
+               zerolinewidth=2),
+    yaxis=dict(title=None, automargin=True),
+    margin=dict(l=10, r=10, t=90, b=40), height=600, showlegend=False,
+)
+fig3.show()
+```
+
+
+
+# Outcomes
+**Two:** How do outcomes relate to neighborhood demographics and conditions?
 
 ## Row
 
 ### Plot
 
 ```{python}
-import plotly.express as px
-import plotly.io as pio
-pio.templates.default = "plotly_white"
-fig1 = px.scatter(
-    title="Poverty Rate vs. Opportunity Gap (Placeholder)"
-)
+s = map_df.dropna(subset=["poverty_rate_2020", "upward_mobility",
+                          "median_household_income_2020"]).copy()
 
-fig1.update_layout(
-    xaxis_title="Poverty Rate",
-    yaxis_title="Opportunity Gap",
-)
+# Fitted line and residuals (no statsmodels needed)
+slope, intercept = np.polyfit(s["poverty_rate_2020"], s["upward_mobility"], 1)
+s["fitted"] = intercept + slope * s["poverty_rate_2020"]
+s["resid"] = s["upward_mobility"] - s["fitted"]
+outliers = s.loc[s["resid"].abs().nlargest(8).index]
 
-fig1.add_annotation(
-    text="Scatter Plot Placeholder",
-    x=0.5,
-    y=0.5,
-    xref="paper",
-    yref="paper",
-    showarrow=False
-)
-
-fig1.show()
-```
-
-### Plot
-
-```{python}
-import plotly.express as px
-import plotly.io as pio
-pio.templates.default = "plotly_white"
-fig1 = px.scatter(
-    title="Adult/Student Ratio vs. Opportunity Gap (Placeholder)"
-)
-
-fig1.update_layout(
-    xaxis_title="Adult/Student Ratio",
-    yaxis_title="Opportunity Gap",
-)
-
-fig1.add_annotation(
-    text="Scatter Plot Placeholder",
-    x=0.5,
-    y=0.5,
-    xref="paper",
-    yref="paper",
-    showarrow=False
-)
-
-
-
-fig1.show()
-```
-
-# Population Percentage Change
-
-## Row
-
-### Plot
-
-```{python}
+fig2 = px.scatter(
+    s, x="poverty_rate_2020", y="upward_mobility",
+    color="median_household_income_2020", color_continuous_scale="Viridis",
+    facet_col="msa_name", facet_col_wrap=2, opacity=0.6,
+    hover_name="label",
+    hover_data={"city": True, "poverty_rate_2020": ":.0f", "upward_mobility": ":.1f",
+                "median_household_income_2020": ":$,.0f", "msa_name": False},
+    labels={"poverty_rate_2020": "Poverty rate (%)",
+            "upward_mobility": "Upward mobility (income rank, pctl)",
+            "median_household_income_2020": "Median HH income"},
+    title="Poverty rate and upward mobility by metro",
+    height=650,
 import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "plotly_white"
@@ -164,47 +259,53 @@ fig1.add_annotation(
     showarrow=False
 )
 
-fig1.show()
+# Overall trend line (dashed) on every facet
+xs = np.array([s["poverty_rate_2020"].min(), s["poverty_rate_2020"].max()])
+fig2.add_trace(go.Scatter(x=xs, y=intercept + slope * xs, mode="lines",
+                          line=dict(color="black", dash="dash"),
+                          name="Overall fit", hoverinfo="skip"),
+               row="all", col="all")
+
+# Label the biggest outliers
+fig2.add_trace(go.Scatter(
+    x=outliers["poverty_rate_2020"], y=outliers["upward_mobility"],
+    mode="markers+text", text=outliers["label"], textposition="top center",
+    marker=dict(size=11, color="rgba(0,0,0,0)", line=dict(color="red", width=2)),
+    name="Outliers (largest residuals)", hoverinfo="skip"))
+
+fig2.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].split(",")[0]))
+fig2.show()
 ```
-### Plot
-
-```{python}
-import plotly.express as px
-import plotly.io as pio
-pio.templates.default = "plotly_white"
-df_sorted = df.sort_values(by="income_change_2010_2020", ascending=False).head(20)
-fig1 = px.bar(
-    df_sorted,
-    x="income_change_2010_2020",
-    y="tract_code_2020",
-    orientation="h",
-    title="Ranked Bar Chart of Change in Median Household Income from 2010 to 2020"
-)
-    
-fig1.update_layout(
-    xaxis_title="Change in Median Household Income from 2010 to 2020",
-    yaxis_title="City"
-)   
-    
-fig1.add_annotation(
-    text=":) Placeholder",
-    x=0.5,
-    y=0.5,
-    xref="paper",
-    yref="paper",
-    showarrow=False
-)
-
-fig1.show()
-```
-
-# Metrics for High and Low Upward Mobility Scores
-
+**Change**: I want the markers to appear on click, still working on that piece. 
 ## Row
 
 ### Plot
 
 ```{python}
+s = map_df.dropna(subset=["share_black_2020", "metro_gap"]).copy()
+
+# Fit line and residuals
+slope, intercept = np.polyfit(s["share_black_2020"], s["metro_gap"], 1)
+s["resid"] = s["metro_gap"] - (intercept + slope * s["share_black_2020"])
+outliers = s.loc[s["resid"].abs().nlargest(10).index]
+
+fig5 = px.scatter(
+    s, x="share_black_2020", y="metro_gap", color="msa_name", opacity=0.55,
+    hover_name="label",
+    hover_data={"city": True, "share_black_2020": ":.0f", "metro_gap": ":.1f",
+                "poverty_rate_2020": ":.0f", "msa_name": False},
+    labels={"share_black_2020": "Share Black (%)",
+            "metro_gap": "Gap vs. metro median upward mobility (pctl pts)",
+            "msa_name": "Metro", "poverty_rate_2020": "Poverty rate (%)"},
+    title="Black population share and distance from metro median",
+    height=600,
+)
+
+# Fit line
+xs = np.array([0, 100])
+fig5.add_trace(go.Scatter(x=xs, y=intercept + slope * xs, mode="lines",
+                          line=dict(color="black", dash="dash"),
+                          name="Overall fit", hoverinfo="skip"))
 import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "plotly_white"
@@ -220,15 +321,14 @@ fig1.update_layout(
     yaxis_title="Poverty Rate (2020)",
 )
 
-fig1.add_annotation(
-    text=":) Placeholder",
-    x=0.5,
-    y=0.5,
-    xref="paper",
-    yref="paper",
-    showarrow=False
-)
+# Outlined, labeled outliers
+fig5.add_trace(go.Scatter(
+    x=outliers["share_black_2020"], y=outliers["metro_gap"],
+    mode="markers+text", text=outliers["label"], textposition="top center",
+    marker=dict(symbol="circle-open", size=18, line=dict(color="red", width=2.5)),
+    name="Largest outliers", hovertext=outliers["label"], hoverinfo="text"))
 
+fig5.show()
 fig1.show()
 ```
 ### Plot
