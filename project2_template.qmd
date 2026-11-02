@@ -213,6 +213,16 @@ fig3.show()
 ### Plot
 
 ```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+df["income_change_2010_2020"] = df["median_household_income_2020"] - df["median_household_income_2010"]
+fig1 = px.histogram(
+    df,
+    x="income_change_2010_2020",
+    nbins=40,
+    title="Distribution of Income Changes"
+)
 s = map_df.dropna(subset=["poverty_rate_2020", "upward_mobility",
                           "median_household_income_2020"]).copy()
 
@@ -234,15 +244,6 @@ fig2 = px.scatter(
             "median_household_income_2020": "Median HH income"},
     title="Poverty rate and upward mobility by metro",
     height=650,
-import plotly.express as px
-import plotly.io as pio
-pio.templates.default = "plotly_white"
-df["income_change_2010_2020"] = df["median_household_income_2020"] - df["median_household_income_2010"]
-fig1 = px.histogram(
-    df,
-    x="income_change_2010_2020",
-    nbins=40,
-    title="Distribution of Income Changes"
 )
 
 fig1.update_layout(
@@ -276,7 +277,6 @@ fig2.add_trace(go.Scatter(
 fig2.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1].split(",")[0]))
 fig2.show()
 ```
-**Change**: I want the markers to appear on click, still working on that piece. 
 ## Row
 
 ### Plot
