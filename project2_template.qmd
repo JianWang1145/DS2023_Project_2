@@ -48,6 +48,8 @@ pio.templates.default = "plotly_white"
 df = pd.read_csv("HOPEVI_All_Candidate_Neighborhoods.csv", thousands=",")
 map_df = df.dropna(subset=["lat", "lon", "opportunity_gap","total_pop_2020", "neighborhood"]).sample(n=2000, random_state=114514)  # Sample for demo purposes
 # This is not the actual data cleaning. DO NOT USE THIS FOR THE ACTUAL PROJECT!!!
+cols = ['median_household_income_2010', 'median_household_income_2020', 'poverty_rate_2020', 'opportunity_gap', 'upward_mobility']
+df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
 
 fig = px.scatter_geo(
     map_df,
@@ -232,6 +234,29 @@ fig2 = px.scatter(
             "median_household_income_2020": "Median HH income"},
     title="Poverty rate and upward mobility by metro",
     height=650,
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+df["income_change_2010_2020"] = df["median_household_income_2020"] - df["median_household_income_2010"]
+fig1 = px.histogram(
+    df,
+    x="income_change_2010_2020",
+    nbins=40,
+    title="Distribution of Income Changes"
+)
+
+fig1.update_layout(
+    xaxis_title="Change in Median Household Income from 2010 to 2020",
+    yaxis_title="Number of Census Tracts",
+)
+
+fig1.add_annotation(
+    text=":) Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",
+    yref="paper",
+    showarrow=False
 )
 
 # Overall trend line (dashed) on every facet
@@ -281,6 +306,20 @@ xs = np.array([0, 100])
 fig5.add_trace(go.Scatter(x=xs, y=intercept + slope * xs, mode="lines",
                           line=dict(color="black", dash="dash"),
                           name="Overall fit", hoverinfo="skip"))
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+df_selected = df[(df['flag_selected'] == 1) & (df["upward_mobility"] > 0)]
+fig1 = px.box(
+    df_selected,
+    y = "poverty_rate_2020",
+    title="Distribution of Poverty Rate for Selected Tracts in 2020"
+)
+
+fig1.update_layout(
+    xaxis_title="",
+    yaxis_title="Poverty Rate (2020)",
+)
 
 # Outlined, labeled outliers
 fig5.add_trace(go.Scatter(
@@ -290,4 +329,35 @@ fig5.add_trace(go.Scatter(
     name="Largest outliers", hovertext=outliers["label"], hoverinfo="text"))
 
 fig5.show()
+fig1.show()
+```
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+df_selected = df[df['flag_selected'] == 1]
+fig1 = px.scatter(
+    df_selected,
+    x = "poverty_rate_2020",
+    y = "upward_mobility",
+    title="2020 Poverty Rate vs. Upward Mobility Score"
+)
+    
+fig1.update_layout(   
+    xaxis_title="Poverty Rate (2020)",
+    yaxis_title="Upward Mobility Score",
+)
+    
+fig1.add_annotation(
+    text=":) Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",  
+    yref="paper",
+    showarrow=False
+)
+
+fig1.show()
 ```
