@@ -208,7 +208,7 @@ fig1.show()
 import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "plotly_white"
-df_selected = df[df['flag_selected'] == 1) & (df["upward_mobility"] > 0)]
+df_selected = df[(df['flag_selected'] == 1) & (df["upward_mobility"] > 0)]
 fig1 = px.box(
     df_selected,
     y = "poverty_rate_2020",
