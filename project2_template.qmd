@@ -48,6 +48,8 @@ pio.templates.default = "plotly_white"
 df = pd.read_csv("HOPEVI_All_Candidate_Neighborhoods.csv", thousands=",")
 map_df = df.dropna(subset=["lat", "lon", "opportunity_gap","total_pop_2020", "neighborhood"]).sample(n=2000, random_state=114514)  # Sample for demo purposes
 # This is not the actual data cleaning. DO NOT USE THIS FOR THE ACTUAL PROJECT!!!
+cols = ['median_household_income_2010', 'median_household_income_2020', 'poverty_rate_2020', 'opportunity_gap', 'upward_mobility']
+df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
 
 fig = px.scatter_geo(
     map_df,
@@ -130,7 +132,7 @@ fig1.add_annotation(
 fig1.show()
 ```
 
-# Page 3
+# Population Percentage Change
 
 ## Row
 
@@ -140,13 +142,17 @@ fig1.show()
 import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "plotly_white"
-fig1 = px.scatter(
-    title="Placeholder"
+df["income_change_2010_2020"] = df["median_household_income_2020"] - df["median_household_income_2010"]
+fig1 = px.histogram(
+    df,
+    x="income_change_2010_2020",
+    nbins=40,
+    title="Distribution of Income Changes"
 )
 
 fig1.update_layout(
-    xaxis_title="Hello",
-    yaxis_title="I am a placeholder",
+    xaxis_title="Change in Median Household Income from 2010 to 2020",
+    yaxis_title="Number of Census Tracts",
 )
 
 fig1.add_annotation(
@@ -160,6 +166,39 @@ fig1.add_annotation(
 
 fig1.show()
 ```
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+df_sorted = df.sort_values(by="income_change_2010_2020", ascending=False).head(20)
+fig1 = px.bar(
+    df_sorted,
+    x="income_change_2010_2020",
+    y="tract_code_2020",
+    orientation="h",
+    title="Ranked Bar Chart of Change in Median Household Income from 2010 to 2020"
+)
+    
+fig1.update_layout(
+    xaxis_title="Change in Median Household Income from 2010 to 2020",
+    yaxis_title="City"
+)   
+    
+fig1.add_annotation(
+    text=":) Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",
+    yref="paper",
+    showarrow=False
+)
+
+fig1.show()
+```
+
+# Metrics for High and Low Upward Mobility Scores
 
 ## Row
 
@@ -169,13 +208,16 @@ fig1.show()
 import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "plotly_white"
-fig1 = px.scatter(
-    title="Placeholder"
+df_selected = df[df['flag_selected'] == 1) & (df["upward_mobility"] > 0)]
+fig1 = px.box(
+    df_selected,
+    y = "poverty_rate_2020",
+    title="Distribution of Poverty Rate for Selected Tracts in 2020"
 )
 
 fig1.update_layout(
-    xaxis_title="Hello",
-    yaxis_title="I am a placeholder",
+    xaxis_title="",
+    yaxis_title="Poverty Rate (2020)",
 )
 
 fig1.add_annotation(
@@ -183,6 +225,36 @@ fig1.add_annotation(
     x=0.5,
     y=0.5,
     xref="paper",
+    yref="paper",
+    showarrow=False
+)
+
+fig1.show()
+```
+### Plot
+
+```{python}
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+df_selected = df[df['flag_selected'] == 1]
+fig1 = px.scatter(
+    df_selected,
+    x = "poverty_rate_2020",
+    y = "upward_mobility",
+    title="2020 Poverty Rate vs. Upward Mobility Score"
+)
+    
+fig1.update_layout(   
+    xaxis_title="Poverty Rate (2020)",
+    yaxis_title="Upward Mobility Score",
+)
+    
+fig1.add_annotation(
+    text=":) Placeholder",
+    x=0.5,
+    y=0.5,
+    xref="paper",  
     yref="paper",
     showarrow=False
 )
